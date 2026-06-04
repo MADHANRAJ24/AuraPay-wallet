@@ -26,7 +26,7 @@ export const addMoneyToWallet = async (req, res) => {
 
     // Deduct from bank and add to user wallet (simulating transactional safety)
     await BankAccount.findByIdAndUpdate(bankAccountId, { $inc: { balance: -numAmount } });
-    const updatedUser = await User.findByIdAndUpdate(userId, { $inc: { walletBalance: numAmount } });
+    const updatedUser = await User.findByIdAndUpdate(userId, { $inc: { walletBalance: numAmount } }, { new: true });
 
     // Create a transaction record
     const transaction = await Transaction.create({
@@ -46,7 +46,7 @@ export const addMoneyToWallet = async (req, res) => {
       success: true,
       message: `Successfully loaded ₹${numAmount} to wallet`,
       data: {
-        newWalletBalance: updatedUser.walletBalance + numAmount,
+        newWalletBalance: updatedUser.walletBalance,
         transaction
       }
     });
@@ -73,7 +73,7 @@ export const rechargeMobile = async (req, res) => {
     }
 
     // Deduct wallet balance
-    const updatedUser = await User.findByIdAndUpdate(userId, { $inc: { walletBalance: -numAmount } });
+    const updatedUser = await User.findByIdAndUpdate(userId, { $inc: { walletBalance: -numAmount } }, { new: true });
 
     // Log transaction
     const transaction = await Transaction.create({
@@ -93,7 +93,7 @@ export const rechargeMobile = async (req, res) => {
       success: true,
       message: `Recharge of ₹${numAmount} successful for ${phoneNumber}`,
       data: {
-        newWalletBalance: updatedUser.walletBalance - numAmount,
+        newWalletBalance: updatedUser.walletBalance,
         transaction
       }
     });
@@ -120,7 +120,7 @@ export const payUtilityBill = async (req, res) => {
     }
 
     // Deduct wallet balance
-    const updatedUser = await User.findByIdAndUpdate(userId, { $inc: { walletBalance: -numAmount } });
+    const updatedUser = await User.findByIdAndUpdate(userId, { $inc: { walletBalance: -numAmount } }, { new: true });
 
     // Log transaction
     const transaction = await Transaction.create({
@@ -140,7 +140,7 @@ export const payUtilityBill = async (req, res) => {
       success: true,
       message: `Utility bill payment of ₹${numAmount} to ${provider} successful`,
       data: {
-        newWalletBalance: updatedUser.walletBalance - numAmount,
+        newWalletBalance: updatedUser.walletBalance,
         transaction
       }
     });

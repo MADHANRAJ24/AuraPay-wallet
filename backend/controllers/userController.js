@@ -120,13 +120,8 @@ export const updateProfile = async (req, res) => {
 // Admin user fetching
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({});
-    // Remove passwords
-    const sanitizedUsers = users.map(user => {
-      const { password, ...rest } = user;
-      return rest;
-    });
-    res.json({ success: true, data: sanitizedUsers });
+    const users = await User.find({}).select('-password');
+    res.json({ success: true, data: users });
   } catch (error) {
     console.error('Get All Users Error:', error);
     res.status(500).json({ success: false, message: 'Server error' });

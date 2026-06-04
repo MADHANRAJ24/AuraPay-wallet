@@ -32,7 +32,7 @@ export const verifyRecipient = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Recipient not found' });
     }
 
-    if (user._id === req.user._id) {
+    if (user._id.toString() === req.user._id.toString()) {
       return res.status(400).json({ success: false, message: 'You cannot send money to yourself' });
     }
 
@@ -67,7 +67,7 @@ export const sendMoney = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Recipient not found' });
     }
 
-    if (recipient._id === senderId) {
+    if (recipient._id.toString() === senderId.toString()) {
       return res.status(400).json({ success: false, message: 'You cannot transfer money to yourself' });
     }
 
@@ -169,10 +169,15 @@ export const getTransactionHistory = async (req, res) => {
   try {
     // Find all transactions where user is sender OR receiver
     const allTrans = await Transaction.find({});
-    
+    const userIdStr = userId.toString();
+
     // Sort transactions manually by date descending to support JSON DB correctly
     const userTrans = allTrans
-      .filter(t => t.senderId === userId || t.receiverId === userId)
+      .filter(t => {
+        const senderId = typeof t.senderId === 'string' ? t.senderId : t.senderId?.toString();
+        const receiverId = typeof t.receiverId === 'string' ? t.receiverId : t.receiverId?.toString();
+        return senderId === userIdStr || receiverId === userIdStr;
+      })
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     res.json({ success: true, data: userTrans });
