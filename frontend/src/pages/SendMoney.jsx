@@ -6,10 +6,20 @@ import { Send, QrCode, AlertCircle, CheckCircle, Search, Sparkles, Loader2, Came
 import jsQR from 'jsqr';
 
 const SendMoney = () => {
-  const { verifyRecipient, sendMoney } = useWallet();
+  const { verifyRecipient, sendMoney, requestMoney } = useWallet();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  // UPI PIN states
+  const [showUpiModal, setShowUpiModal] = useState(false);
+  const [upiPin, setUpiPin] = useState('');
+  const [upiError, setUpiError] = useState('');
+
+  // Request money states
+  const [requestLoading, setRequestLoading] = useState(false);
+  const [requestError, setRequestError] = useState('');
+  const [requestSuccess, setRequestSuccess] = useState(null);
 
   const getAvatarGradient = (name = '') => {
     const colors = [
@@ -208,12 +218,52 @@ const SendMoney = () => {
       return;
     }
 
-    if (numAmount > user.walletBalance) {
-      setSendError('Insufficient wallet balance.');
+    const isUpiLiteUsed = user?.upiLiteEnabled && numAmount <= 200 && Number(user?.upiLiteBalance) >= numAmount;
+
+    if (isUpiLiteUsed) {
+      if (numAmount > Number(user?.upiLiteBalance)) {
+        setSendError('Insufficient UPI Lite balance.');
+        return;
+      }
+    } else {
+      if (numAmount > Number(user?.walletBalance)) {
+        setSendError('Insufficient wallet balance.');
+        return;
+      }
+    }
+
+    if (isUpiLiteUsed) {
+      setSendLoading(true);
+      const res = await sendMoney(verifiedUser.upiId, amount, remarks);
+      setSendLoading(false);
+
+      if (res.success) {
+        setSendSuccess(res.data.transaction);
+        setAmount('');
+        setRemarks('');
+        setVerifiedUser(null);
+        setRecipientInput('');
+      } else {
+        setSendError(res.message || 'Transaction failed.');
+      }
+    } else {
+      // Prompt UPI PIN modal
+      setUpiPin('');
+      setUpiError('');
+      setShowUpiModal(true);
+    }
+  };
+
+  const handleUpiSubmit = async () => {
+    if (upiPin.length < 4) {
+      setUpiError('Please enter a 4-digit UPI PIN.');
       return;
     }
 
     setSendLoading(true);
+    setSendError('');
+    setShowUpiModal(false);
+
     const res = await sendMoney(verifiedUser.upiId, amount, remarks);
     setSendLoading(false);
 
@@ -223,8 +273,55 @@ const SendMoney = () => {
       setRemarks('');
       setVerifiedUser(null);
       setRecipientInput('');
+      setUpiPin('');
     } else {
       setSendError(res.message || 'Transaction failed.');
+      setUpiPin('');
+    }
+  };
+
+  const handleKeypadPress = (key) => {
+    setUpiError('');
+    if (key === '⌫') {
+      setUpiPin(prev => prev.slice(0, -1));
+    } else if (key === '✓') {
+      if (upiPin.length < 4) {
+        setUpiError('Please enter a 4-digit UPI PIN.');
+        return;
+      }
+      handleUpiSubmit();
+    } else {
+      if (upiPin.length < 4) {
+        setUpiPin(prev => prev + key);
+      }
+    }
+  };
+
+  const handleRequestMoney = async (e) => {
+    e.preventDefault();
+    setRequestError('');
+    setRequestSuccess(null);
+    setSendError('');
+
+    if (!verifiedUser) return;
+    const numAmount = Number(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      setRequestError('Please enter a valid amount.');
+      return;
+    }
+
+    setRequestLoading(true);
+    const res = await requestMoney(verifiedUser.upiId, amount, remarks);
+    setRequestLoading(false);
+
+    if (res.success) {
+      setRequestSuccess(res.data);
+      setAmount('');
+      setRemarks('');
+      setVerifiedUser(null);
+      setRecipientInput('');
+    } else {
+      setRequestError(res.message || 'Request failed.');
     }
   };
 
@@ -327,8 +424,27 @@ const SendMoney = () => {
             Send Money
           </h2>
 
-          {/* Success screen */}
-          {sendSuccess ? (
+          {/* Request Success screen */}
+          {requestSuccess ? (
+            <div style={{ textAlign: 'center', padding: '2rem 1rem' }} className="animate-fade-in">
+              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(59, 130, 246, 0.1)', width: '64px', height: '64px', borderRadius: '50%', marginBottom: '1.5rem', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                <CheckCircle size={36} color="#3b82f6" />
+              </div>
+              <h3 style={{ fontSize: '1.5rem', color: '#3b82f6', marginBottom: '0.5rem' }}>Request Sent!</h3>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                Successfully requested <strong>₹{Number(requestSuccess.amount).toLocaleString('en-IN')}</strong> from <strong>{requestSuccess.receiverName}</strong>
+              </p>
+              
+              <div className="glass-card" style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', textAlign: 'left', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.9rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Request ID</span><span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{requestSuccess._id}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>From UPI ID</span><span>{requestSuccess.receiverUpi}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Remarks</span><span>{requestSuccess.remarks}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Status</span><span style={{ color: 'var(--warning)', fontWeight: 600 }}>{requestSuccess.status}</span></div>
+              </div>
+
+              <button onClick={() => setRequestSuccess(null)} className="btn btn-primary" style={{ width: '100%' }}>Send More Money</button>
+            </div>
+          ) : sendSuccess ? (
             <div style={{ textAlign: 'center', padding: '2rem 1rem' }} className="animate-fade-in">
               <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--success-bg)', width: '64px', height: '64px', borderRadius: '50%', marginBottom: '1.5rem', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
                 <CheckCircle size={36} color="var(--success)" />
@@ -516,21 +632,74 @@ const SendMoney = () => {
                   </div>
                 )}
 
-                <button 
-                  type="submit" 
-                  className="btn btn-primary glow-btn" 
-                  disabled={!verifiedUser || sendLoading || !amount}
-                  style={{ width: '100%', marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}
-                >
-                  {sendLoading ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />
-                      Processing Secure Transfer...
-                    </>
-                  ) : (
-                    'Pay Securely Now'
-                  )}
-                </button>
+                {requestError && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--danger-bg)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '0.75rem 1rem', borderRadius: '8px', color: 'var(--danger)', fontSize: '0.9rem' }}>
+                    <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                    <span>{requestError}</span>
+                  </div>
+                )}
+
+                {user?.upiLiteEnabled && Number(amount) > 0 && Number(amount) <= 200 && (
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem', 
+                    background: 'rgba(16, 185, 129, 0.05)', 
+                    border: '1px solid rgba(16, 185, 129, 0.2)', 
+                    padding: '0.6rem 0.85rem', 
+                    borderRadius: '8px', 
+                    color: 'var(--success)', 
+                    fontSize: '0.8rem',
+                    textAlign: 'left'
+                  }}>
+                    <Sparkles size={14} style={{ flexShrink: 0 }} />
+                    <span>
+                      {Number(user?.upiLiteBalance) >= Number(amount) 
+                        ? `UPI Lite eligible! Pin-less payment will be debited from UPI Lite balance (Available: ₹${Number(user?.upiLiteBalance).toFixed(2)}).`
+                        : `Amount is ≤ ₹200 but UPI Lite balance (₹${Number(user?.upiLiteBalance).toFixed(2)}) is insufficient. Payment will use main wallet with PIN.`}
+                    </span>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary glow-btn" 
+                    disabled={!verifiedUser || sendLoading || !amount}
+                    style={{ flex: 1.5, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                  >
+                    {sendLoading ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />
+                        Processing...
+                      </>
+                    ) : (user?.upiLiteEnabled && Number(amount) <= 200 && Number(user?.upiLiteBalance) >= Number(amount)) ? (
+                      <>
+                        <Sparkles size={16} />
+                        Pay via UPI Lite
+                      </>
+                    ) : (
+                      'Pay Securely Now'
+                    )}
+                  </button>
+
+                  <button 
+                    type="button" 
+                    onClick={handleRequestMoney}
+                    className="btn btn-secondary" 
+                    disabled={!verifiedUser || requestLoading || !amount}
+                    style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', border: '1px solid rgba(59, 130, 246, 0.25)', background: 'rgba(59, 130, 246, 0.05)', color: '#3b82f6' }}
+                  >
+                    {requestLoading ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />
+                        Requesting...
+                      </>
+                    ) : (
+                      'Request Money'
+                    )}
+                  </button>
+                </div>
               </div>
 
             </form>
@@ -640,6 +809,164 @@ const SendMoney = () => {
             </div>
           )}
 
+        </div>
+      )}
+
+      {/* SIMULATED UPI PIN MODAL */}
+      {showUpiModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100 }}>
+          <div style={{ 
+            width: '90%', 
+            maxWidth: '360px', 
+            borderRadius: '24px', 
+            padding: '1.5rem', 
+            background: '#0c1a30', 
+            color: '#fff', 
+            border: '1px solid #1a365d', 
+            boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+            fontFamily: 'system-ui, -apple-system, sans-serif'
+          }} className="animate-fade-in">
+            
+            {/* Header: Bank & UPI logo */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1e3a63', paddingBottom: '0.75rem' }}>
+              <div style={{ textAlign: 'left' }}>
+                <span style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Unified Payments Interface</span>
+                <div style={{ fontSize: '1rem', fontWeight: 700 }}>AuraPay Wallet</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#fff', background: 'linear-gradient(90deg, #df6226, #2251a3)', padding: '0.1rem 0.5rem', borderRadius: '4px' }}>UPI</span>
+                <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.1rem' }}>secured by NPCI</span>
+              </div>
+            </div>
+
+            {/* Payment Info */}
+            <div style={{ background: '#112544', padding: '1rem', borderRadius: '14px', border: '1px solid #1c3a66', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>Paying Contact</div>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{verifiedUser?.name}</div>
+                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', wordBreak: 'break-all' }}>{verifiedUser?.upiId}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>Amount</div>
+                <div style={{ fontWeight: 800, fontSize: '1.25rem', color: '#10b981' }}>
+                  ₹{Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+            </div>
+
+            {/* Hidden Input for keyboard typing support */}
+            <input 
+              type="password"
+              value={upiPin}
+              onChange={(e) => {
+                setUpiError('');
+                setUpiPin(e.target.value.replace(/\D/g, '').slice(0, 4));
+              }}
+              style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+              maxLength={4}
+              autoFocus
+            />
+
+            {/* PIN Dots display */}
+            <div style={{ textAlign: 'center', margin: '0.5rem 0' }}>
+              <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.75rem' }}>ENTER 4-DIGIT UPI PIN</div>
+              
+              <div style={{ display: 'flex', gap: '1.2rem', justifyContent: 'center', alignItems: 'center' }}>
+                {[0, 1, 2, 3].map(index => (
+                  <div 
+                    key={index} 
+                    style={{ 
+                      width: '16px', 
+                      height: '16px', 
+                      borderRadius: '50%', 
+                      border: '2.5px solid #3b82f6', 
+                      background: upiPin.length > index ? '#3b82f6' : 'transparent',
+                      boxShadow: upiPin.length > index ? '0 0 10px rgba(59, 130, 246, 0.6)' : 'none',
+                      transition: 'all 0.1s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }} 
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {upiError && (
+              <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.5rem', borderRadius: '8px', color: '#f87171', fontSize: '0.8rem', textAlign: 'center' }}>
+                {upiError}
+              </div>
+            )}
+
+            {/* Virtual Keypad */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(3, 1fr)', 
+              gap: '0.75rem', 
+              marginTop: '0.5rem',
+              justifyItems: 'center'
+            }}>
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '⌫', '0', '✓'].map(key => {
+                const isDelete = key === '⌫';
+                const isSubmit = key === '✓';
+                
+                let btnBg = '#142744';
+                let btnColor = '#fff';
+                let btnHoverBg = '#1d355c';
+                
+                if (isSubmit) {
+                  btnBg = '#10b981';
+                  btnColor = '#fff';
+                  btnHoverBg = '#059669';
+                } else if (isDelete) {
+                  btnBg = '#1e293b';
+                  btnColor = '#cbd5e1';
+                  btnHoverBg = '#334155';
+                }
+
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => handleKeypadPress(key)}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      borderRadius: '12px',
+                      border: 'none',
+                      background: btnBg,
+                      color: btnColor,
+                      fontSize: '1.2rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'background 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '50px'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.background = btnHoverBg}
+                    onMouseOut={(e) => e.currentTarget.style.background = btnBg}
+                  >
+                    {key}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Cancel link */}
+            <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
+              <button 
+                type="button" 
+                onClick={() => { setShowUpiModal(false); setUpiPin(''); setUpiError(''); }}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Cancel Transaction
+              </button>
+            </div>
+
+          </div>
         </div>
       )}
 

@@ -34,6 +34,80 @@ const Transactions = () => {
     fetchTransactions();
   }, []);
 
+  const handlePrintReceipt = (tx) => {
+    const printWindow = window.open('', '_blank', 'width=600,height=700');
+    if (!printWindow) {
+      alert("Please allow pop-ups to download or print your transaction receipt.");
+      return;
+    }
+    
+    const isSender = tx.senderId === user?._id;
+    const counterpartName = tx.type === 'send' ? tx.receiverName : tx.type === 'receive' ? tx.senderName : tx.senderName || 'AuraPay Service';
+    const counterpartUpi = tx.type === 'send' ? tx.receiverUpi : tx.type === 'receive' ? tx.senderUpi : tx.senderUpi || 'service@aurapay';
+    
+    let typeName = 'TRANSACTION RECEIPT';
+    if (tx.type === 'wallet_load') typeName = 'WALLET LOAD RECEIPT';
+    else if (tx.type === 'recharge') typeName = 'MOBILE RECHARGE RECEIPT';
+    else if (tx.type === 'bill') typeName = 'UTILITY BILL RECEIPT';
+    
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>AuraPay Receipt - ${tx._id}</title>
+          <style>
+            body { font-family: 'Courier New', Courier, monospace; color: #333; background: #fff; padding: 30px; line-height: 1.4; }
+            .receipt-card { border: 2px dashed #000; padding: 25px; max-width: 450px; margin: 0 auto; }
+            .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 15px; margin-bottom: 20px; }
+            .header h1 { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: 2px; }
+            .header p { margin: 5px 0 0 0; font-size: 12px; color: #666; }
+            .details { display: flex; flex-direction: column; gap: 10px; font-size: 14px; margin-bottom: 20px; }
+            .row { display: flex; justify-content: space-between; }
+            .label { font-weight: bold; text-transform: uppercase; }
+            .amount-section { text-align: center; border-top: 2px dashed #000; border-bottom: 2px dashed #000; padding: 15px 0; margin: 20px 0; }
+            .amount { font-size: 32px; font-weight: 900; }
+            .footer { text-align: center; font-size: 12px; margin-top: 30px; border-top: 1px dashed #666; padding-top: 15px; }
+            .stamp { border: 3px double #10b981; color: #10b981; display: inline-block; padding: 5px 15px; font-weight: bold; transform: rotate(-5deg); font-size: 16px; margin: 15px 0; }
+            @media print {
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="receipt-card">
+            <div class="header">
+              <h1>AURAPAY WALLET</h1>
+              <p>REAL-TIME TRANSACTION LEDGER</p>
+              <p>${typeName}</p>
+            </div>
+            
+            <div class="details">
+              <div class="row"><span class="label">TXN ID:</span><span>${tx._id}</span></div>
+              <div class="row"><span class="label">DATE:</span><span>${new Date(tx.createdAt).toLocaleString('en-IN')}</span></div>
+              <div class="row"><span class="label">STATUS:</span><span style="color: #10b981; font-weight:bold;">${tx.status.toUpperCase()}</span></div>
+              <div class="row"><span class="label">TYPE:</span><span>${tx.type.toUpperCase()}</span></div>
+              <hr style="border: 0; border-top: 1px dashed #000; width: 100%;" />
+              <div class="row"><span class="label">FROM:</span><span>${isSender ? user.name + ' (' + user.upiId + ')' : counterpartName + ' (' + counterpartUpi + ')'}</span></div>
+              <div class="row"><span class="label">TO:</span><span>${isSender ? counterpartName + ' (' + counterpartUpi + ')' : user.name + ' (' + user.upiId + ')'}</span></div>
+              <div class="row"><span class="label">REMARKS:</span><span>${tx.remarks || 'None'}</span></div>
+            </div>
+            
+            <div class="amount-section">
+              <div class="amount">₹${Number(tx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+              <div class="stamp">PAID SECURELY</div>
+            </div>
+            
+            <div class="footer">
+              <p>Thank you for using AuraPay!</p>
+              <p>Secured by Unified Payments Interface (UPI)</p>
+              <p class="no-print" style="margin-top:15px;"><button onclick="window.print();" style="padding: 8px 16px; font-weight: bold; background: #000; color: #fff; border: none; cursor:pointer;">PRINT / SAVE PDF</button></p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   // Filter & Search Logic
   const filteredTransactions = transactions.filter((tx) => {
     // Search match
@@ -209,13 +283,25 @@ const Transactions = () => {
                     </div>
                   </div>
 
-                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                    <div style={{ fontWeight: 700, fontSize: '1rem', color: displayColor }}>
-                      {cfg.sign}₹{Number(tx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <div style={{ fontWeight: 700, fontSize: '1rem', color: displayColor }}>
+                        {cfg.sign}₹{Number(tx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        {new Date(tx.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {new Date(tx.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </div>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePrintReceipt(tx);
+                      }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      title="Print Receipt"
+                    >
+                      <FileText size={16} />
+                    </button>
                   </div>
                 </div>
               );
@@ -332,7 +418,7 @@ const Transactions = () => {
 
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
               <button 
-                onClick={() => window.print()} 
+                onClick={() => handlePrintReceipt(selectedTx)} 
                 className="btn btn-secondary" 
                 style={{ flex: 1, padding: '0.6rem' }}
               >

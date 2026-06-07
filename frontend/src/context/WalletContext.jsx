@@ -11,8 +11,12 @@ export const WalletProvider = ({ children }) => {
   const { token, refreshUser } = useAuth();
   const [linkedBanks, setLinkedBanks] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [rewards, setRewards] = useState([]);
   const [loadingBanks, setLoadingBanks] = useState(false);
   const [loadingTrans, setLoadingTrans] = useState(false);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [loadingRewards, setLoadingRewards] = useState(false);
   const [error, setError] = useState(null);
 
   const getHeaders = () => ({
@@ -52,13 +56,49 @@ export const WalletProvider = ({ children }) => {
     }
   };
 
+  const fetchRequests = async () => {
+    if (!token) return;
+    setLoadingRequests(true);
+    try {
+      const res = await fetch(`${TRANS_API}/requests`, { headers: getHeaders() });
+      const data = await res.json();
+      if (data.success) {
+        setRequests(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching payment requests:', err);
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
+  const fetchRewards = async () => {
+    if (!token) return;
+    setLoadingRewards(true);
+    try {
+      const res = await fetch(`${TRANS_API}/rewards`, { headers: getHeaders() });
+      const data = await res.json();
+      if (data.success) {
+        setRewards(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching rewards:', err);
+    } finally {
+      setLoadingRewards(false);
+    }
+  };
+
   useEffect(() => {
     if (token) {
       fetchBanks();
       fetchTransactions();
+      fetchRequests();
+      fetchRewards();
     } else {
       setLinkedBanks([]);
       setTransactions([]);
+      setRequests([]);
+      setRewards([]);
     }
   }, [token]);
 
@@ -196,23 +236,120 @@ export const WalletProvider = ({ children }) => {
     }
   };
 
+  const requestMoney = async (recipientUpi, amount, remarks) => {
+    try {
+      const res = await fetch(`${TRANS_API}/request`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ recipientUpi, amount, remarks })
+      });
+      const data = await res.json();
+      return data;
+    } catch (err) {
+      return { success: false, message: 'Server error' };
+    }
+  };
+
+  const handleRequest = async (id, action) => {
+    try {
+      const res = await fetch(`${TRANS_API}/requests/${id}/action`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ action })
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchRequests();
+        await fetchTransactions();
+        await refreshUser();
+      }
+      return data;
+    } catch (err) {
+      return { success: false, message: 'Server error' };
+    }
+  };
+
+  const scratchCard = async (id) => {
+    try {
+      const res = await fetch(`${TRANS_API}/rewards/${id}/scratch`, {
+        method: 'POST',
+        headers: getHeaders()
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchRewards();
+        await fetchTransactions();
+        await refreshUser();
+      }
+      return data;
+    } catch (err) {
+      return { success: false, message: 'Server error' };
+    }
+  };
+
+  const toggleUpiLite = async (enabled) => {
+    try {
+      const res = await fetch(`${TRANS_API}/upilite/toggle`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ enabled })
+      });
+      const data = await res.json();
+      if (data.success) {
+        await refreshUser();
+      }
+      return data;
+    } catch (err) {
+      return { success: false, message: 'Server error' };
+    }
+  };
+
+  const fundUpiLite = async (amount, action) => {
+    try {
+      const res = await fetch(`${TRANS_API}/upilite/fund`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ amount, action })
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchTransactions();
+        await refreshUser();
+      }
+      return data;
+    } catch (err) {
+      return { success: false, message: 'Server error' };
+    }
+  };
+
   return (
     <WalletContext.Provider
       value={{
         linkedBanks,
         transactions,
+        requests,
+        rewards,
         loadingBanks,
         loadingTrans,
+        loadingRequests,
+        loadingRewards,
         error,
         fetchBanks,
         fetchTransactions,
+        fetchRequests,
+        fetchRewards,
         linkBank,
         unlinkBank,
         addMoney,
         verifyRecipient,
         sendMoney,
         rechargeMobile,
-        payUtilityBill
+        payUtilityBill,
+        requestMoney,
+        handleRequest,
+        scratchCard,
+        toggleUpiLite,
+        fundUpiLite
       }}
     >
       {children}

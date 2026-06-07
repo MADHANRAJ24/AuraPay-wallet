@@ -8,6 +8,8 @@ const UserSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true },
   upiId: { type: String, required: true, unique: true },
   walletBalance: { type: Number, default: 0 },
+  upiLiteBalance: { type: Number, default: 0 },
+  upiLiteEnabled: { type: Boolean, default: false },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   status: { type: String, enum: ['active', 'blocked'], default: 'active' },
   createdAt: { type: Date, default: Date.now }

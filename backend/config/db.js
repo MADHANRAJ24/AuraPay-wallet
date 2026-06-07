@@ -11,7 +11,9 @@ let useFallback = false;
 let fallbackData = {
   users: [],
   transactions: [],
-  bankaccounts: []
+  bankaccounts: [],
+  rewards: [],
+  paymentrequests: []
 };
 
 // Seed initial bank accounts and admin user if fallback is used
@@ -54,6 +56,8 @@ const initFallbackDb = () => {
       if (!fallbackData.users) fallbackData.users = [];
       if (!fallbackData.transactions) fallbackData.transactions = [];
       if (!fallbackData.bankaccounts) fallbackData.bankaccounts = [];
+      if (!fallbackData.rewards) fallbackData.rewards = [];
+      if (!fallbackData.paymentrequests) fallbackData.paymentrequests = [];
     } catch (e) {
       console.error('Error reading fallback DB file, resetting fallback database.', e);
     }
