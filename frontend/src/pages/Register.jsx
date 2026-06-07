@@ -51,7 +51,7 @@ const Register = () => {
             <Wallet size={26} color="#fff" />
           </div>
           <h2 style={{ fontSize: '1.8rem', fontWeight: 800 }}>Create Wallet</h2>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Get instant pre-funded balance for testing</p>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Register and start transacting securely</p>
         </div>
 
         {/* Display Errors */}
@@ -139,7 +139,7 @@ const Register = () => {
                 Creating Wallet...
               </>
             ) : (
-              'Create & Pre-fund Wallet'
+              'Create Wallet'
             )}
           </button>
         </form>

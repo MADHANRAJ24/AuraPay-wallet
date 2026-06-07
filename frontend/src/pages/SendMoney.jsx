@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import { useAuth } from '../context/AuthContext';
 import { Send, QrCode, AlertCircle, CheckCircle, Search, Sparkles, Loader2, Camera, Upload } from 'lucide-react';
+import jsQR from 'jsqr';
 
 const SendMoney = () => {
   const { verifyRecipient, sendMoney } = useWallet();
@@ -80,6 +81,72 @@ const SendMoney = () => {
       setCameraActive(false);
     };
   }, [mode, scanStep, uploadedImage]);
+
+  // Real-time camera QR decoding loop
+  useEffect(() => {
+    let active = true;
+    let animId = null;
+
+    const scanFrame = () => {
+      if (!active) return;
+      const video = videoRef.current;
+      if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        
+        if (code && code.data) {
+          // Found QR code!
+          const upiId = code.data;
+          
+          // Stop camera stream
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+          }
+          
+          // Show scanning success delay transition
+          setScanStep(2);
+          setTimeout(() => {
+            setRecipientInput(upiId);
+            setVerifiedUser(null);
+            setMode('send');
+            setScanStep(1);
+            setUploadedImage(null);
+            
+            // Verify recipient
+            setVerifyLoading(true);
+            verifyRecipient(upiId).then(res => {
+              setVerifyLoading(false);
+              if (res.success) {
+                setVerifiedUser(res.data);
+              } else {
+                setVerifyError(res.message || 'Recipient not found for this QR code');
+              }
+            });
+          }, 800);
+          
+          active = false;
+          return;
+        }
+      }
+      animId = requestAnimationFrame(scanFrame);
+    };
+
+    if (cameraActive && mode === 'scan' && scanStep === 1 && !uploadedImage) {
+      animId = requestAnimationFrame(scanFrame);
+    }
+
+    return () => {
+      active = false;
+      if (animId) {
+        cancelAnimationFrame(animId);
+      }
+    };
+  }, [cameraActive, mode, scanStep, uploadedImage]);
 
   // Load all users to simulate contact searching and scan selection
   useEffect(() => {
@@ -185,35 +252,49 @@ const SendMoney = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (registeredUsers.length === 0) {
-      alert("No other registered users available to simulate scanning. Please sign up another account first!");
-      return;
-    }
-
     const imageUrl = URL.createObjectURL(file);
     setUploadedImage(imageUrl);
     setScanStep(2); // Show analyzing transition
 
-    setTimeout(() => {
-      // Pick a random user to simulate successful scan
-      const randomIndex = Math.floor(Math.random() * registeredUsers.length);
-      const targetUser = registeredUsers[randomIndex];
+    // Parse QR code from uploaded image
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height);
 
-      setRecipientInput(targetUser.upiId);
-      setVerifiedUser(null);
-      setMode('send');
-      setScanStep(1);
-      setUploadedImage(null);
+      setTimeout(() => {
+        if (code && code.data) {
+          const decodedUpi = code.data;
+          setRecipientInput(decodedUpi);
+          setVerifiedUser(null);
+          setMode('send');
+          setScanStep(1);
+          setUploadedImage(null);
 
-      // Verify the user
-      setVerifyLoading(true);
-      verifyRecipient(targetUser.upiId).then(res => {
-        setVerifyLoading(false);
-        if (res.success) {
-          setVerifiedUser(res.data);
+          // Verify the decoded user details
+          setVerifyLoading(true);
+          verifyRecipient(decodedUpi).then(res => {
+            setVerifyLoading(false);
+            if (res.success) {
+              setVerifiedUser(res.data);
+            } else {
+              setVerifyError(res.message || 'Recipient not found for this QR code');
+            }
+          });
+        } else {
+          // If no QR found in uploaded image, show error
+          setScanStep(1);
+          setUploadedImage(null);
+          setVerifyError('No valid QR code found in the uploaded image.');
         }
-      });
-    }, 1500);
+      }, 1500); // 1.5s visual scanning delay
+    };
+    img.src = imageUrl;
   };
 
   return (

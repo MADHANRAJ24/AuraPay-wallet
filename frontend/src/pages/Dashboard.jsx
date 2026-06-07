@@ -247,6 +247,24 @@ const Dashboard = () => {
     }
   };
 
+  const handleKeypadPress = (key) => {
+    if (formLoading) return;
+    setUpiError('');
+    if (key === '⌫') {
+      setUpiPin(prev => prev.slice(0, -1));
+    } else if (key === '✓') {
+      if (upiPin.length < 4) {
+        setUpiError('Please enter a 4-digit UPI PIN.');
+        return;
+      }
+      handleMockPaymentSubmit({ preventDefault: () => {} });
+    } else {
+      if (upiPin.length < 4) {
+        setUpiPin(prev => prev + key);
+      }
+    }
+  };
+
   const handleUnlinkBank = async (id) => {
     if (window.confirm('Are you sure you want to unlink this bank account?')) {
       await unlinkBank(id);
@@ -308,42 +326,16 @@ const Dashboard = () => {
     }
   };
 
-  // Pure SVG mock QR code generator based on user's details
+  // Load real scannable QR code from QRServer API based on user's details
   const renderMockQr = (upi) => {
-    // We create a decorative pattern of squares
-    const blocks = [];
-    const size = 15; // 15x15 grid
-    let seed = 42; // arbitrary seed for stable deterministic pattern
-    for (let r = 0; r < size; r++) {
-      for (let c = 0; c < size; c++) {
-        // Corners: make standard QR finder patterns
-        const isFinder = 
-          (r < 4 && c < 4) || // top left
-          (r < 4 && c >= size - 4) || // top right
-          (r >= size - 4 && c < 4); // bottom left
-
-        let fill = false;
-        if (isFinder) {
-          // outer border or inner core of finder
-          const isBorder = (r === 0 || r === 3 || c === 0 || c === 3) || 
-                           (r === 0 || r === 3 || c === size - 1 || c === size - 4) ||
-                           (r === size - 1 || r === size - 4 || c === 0 || c === 3);
-          const isCore = (r === 1 && c === 1) || (r === 1 && c === size - 2) || (r === size - 2 && c === 1);
-          fill = isBorder || isCore;
-        } else {
-          // pseudo random fill
-          seed = (seed * 9301 + 49297) % 233280;
-          fill = (seed / 233280) > 0.45;
-        }
-        if (fill) {
-          blocks.push(<rect key={`${r}-${c}`} x={c * 10} y={r * 10} width="10" height="10" fill="#fff" />);
-        }
-      }
-    }
     return (
-      <svg width="150" height="150" viewBox={`0 0 ${size * 10} ${size * 10}`} style={{ background: '#111', padding: '10px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
-        {blocks}
-      </svg>
+      <div style={{ background: '#fff', padding: '12px', borderRadius: '16px', display: 'inline-flex', boxShadow: '0 10px 25px rgba(0,0,0,0.3)' }}>
+        <img 
+          src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upi || '')}`} 
+          alt="My UPI QR Code"
+          style={{ width: '150px', height: '150px', display: 'block' }}
+        />
+      </div>
     );
   };
 
@@ -704,62 +696,174 @@ const Dashboard = () => {
       {/* MODAL 4: SIMULATED RAZORPAY UPI PIN MODAL */}
       {showUpiModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100 }}>
-          <div className="glass-panel animate-fade-in" style={{ width: '90%', maxWidth: '380px', padding: '2rem', border: '1px solid rgba(139, 92, 246, 0.25)', boxShadow: '0 0 25px rgba(139, 92, 246, 0.15)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.75rem' }}>
-              <div>
-                <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>🛡️ Razorpay Sandbox</span>
-                <span style={{ fontSize: '1rem', fontWeight: 700 }}>Enter UPI PIN</span>
+          <div style={{ 
+            width: '90%', 
+            maxWidth: '360px', 
+            borderRadius: '24px', 
+            padding: '1.5rem', 
+            background: '#0c1a30', 
+            color: '#fff', 
+            border: '1px solid #1a365d', 
+            boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+            fontFamily: 'system-ui, -apple-system, sans-serif'
+          }} className="animate-fade-in">
+            
+            {/* Header: Bank & UPI logo */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1e3a63', paddingBottom: '0.75rem' }}>
+              <div style={{ textAlign: 'left' }}>
+                <span style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Unified Payments Interface</span>
+                <div style={{ fontSize: '1rem', fontWeight: 700 }}>AuraPay Wallet</div>
               </div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{mockOrder?.id}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#fff', background: 'linear-gradient(90deg, #df6226, #2251a3)', padding: '0.1rem 0.5rem', borderRadius: '4px' }}>UPI</span>
+                <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.1rem' }}>secured by NPCI</span>
+              </div>
             </div>
 
-            <div style={{ textAlign: 'center', margin: '1rem 0 1.5rem 0' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Paying AuraPay Wallet</span>
-              <h2 style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '0.25rem', color: '#fff' }} className="glow-text">
-                ₹{Number(loadAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-              </h2>
+            {/* Payment Info */}
+            <div style={{ background: '#112544', padding: '1rem', borderRadius: '14px', border: '1px solid #1c3a66', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>Paying Merchant</div>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>AuraPay Wallet load</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>Amount</div>
+                <div style={{ fontWeight: 800, fontSize: '1.25rem', color: '#10b981' }}>
+                  ₹{Number(loadAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
             </div>
 
+            {/* Hidden Input for keyboard typing support */}
+            <input 
+              type="password"
+              value={upiPin}
+              onChange={(e) => {
+                setUpiError('');
+                setUpiPin(e.target.value.replace(/\D/g, '').slice(0, 4));
+              }}
+              style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+              maxLength={4}
+              autoFocus
+            />
+
+            {/* PIN Dots display */}
+            <div style={{ textAlign: 'center', margin: '0.5rem 0' }}>
+              <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.75rem' }}>ENTER 4-DIGIT UPI PIN</div>
+              
+              <div style={{ display: 'flex', gap: '1.2rem', justifyContent: 'center', alignItems: 'center' }}>
+                {[0, 1, 2, 3].map(index => (
+                  <div 
+                    key={index} 
+                    style={{ 
+                      width: '16px', 
+                      height: '16px', 
+                      borderRadius: '50%', 
+                      border: '2.5px solid #3b82f6', 
+                      background: upiPin.length > index ? '#3b82f6' : 'transparent',
+                      boxShadow: upiPin.length > index ? '0 0 10px rgba(59, 130, 246, 0.6)' : 'none',
+                      transition: 'all 0.1s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }} 
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Error Message */}
             {upiError && (
-              <div className="badge badge-danger" style={{ width: '100%', padding: '0.6rem', marginBottom: '1rem', borderRadius: '8px' }}>
+              <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.5rem', borderRadius: '8px', color: '#f87171', fontSize: '0.8rem', textAlign: 'center' }}>
                 {upiError}
               </div>
             )}
 
-            <form onSubmit={handleMockPaymentSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', alignItems: 'center' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%', alignItems: 'center' }}>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Enter 4-Digit UPI PIN</label>
-                <input 
-                  type="password" 
-                  placeholder="••••" 
-                  value={upiPin}
-                  onChange={(e) => setUpiPin(e.target.value.replace(/\D/g, ''))}
-                  className="glass-input"
-                  maxLength={4}
-                  style={{ textAlign: 'center', fontSize: '1.6rem', letterSpacing: '0.8rem', maxWidth: '180px', padding: '0.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(139, 92, 246, 0.3)' }}
-                  autoFocus
-                />
-              </div>
+            {/* Virtual Keypad */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(3, 1fr)', 
+              gap: '0.75rem', 
+              marginTop: '0.5rem',
+              justifyItems: 'center'
+            }}>
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '⌫', '0', '✓'].map(key => {
+                const isDelete = key === '⌫';
+                const isSubmit = key === '✓';
+                
+                let btnBg = '#142744';
+                let btnColor = '#fff';
+                let btnHoverBg = '#1d355c';
+                
+                if (isSubmit) {
+                  btnBg = '#10b981';
+                  btnColor = '#fff';
+                  btnHoverBg = '#059669';
+                } else if (isDelete) {
+                  btnBg = '#ef4444';
+                  btnColor = '#fff';
+                  btnHoverBg = '#dc2626';
+                }
 
-              <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '0.5rem' }}>
-                <button 
-                  type="button" 
-                  onClick={() => { setShowUpiModal(false); setUpiPin(''); setUpiError(''); }} 
-                  className="btn btn-secondary" 
-                  style={{ flex: 1 }}
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn btn-primary glow-btn" 
-                  style={{ flex: 1 }}
-                  disabled={formLoading}
-                >
-                  {formLoading ? 'Authorizing...' : 'Submit PIN'}
-                </button>
-              </div>
-            </form>
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => handleKeypadPress(key)}
+                    disabled={formLoading}
+                    style={{
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '50%',
+                      border: 'none',
+                      background: btnBg,
+                      color: btnColor,
+                      fontSize: '1.3rem',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.1s ease',
+                      boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
+                    }}
+                    onMouseDown={(e) => {
+                      e.currentTarget.style.transform = 'scale(0.9)';
+                      e.currentTarget.style.background = btnHoverBg;
+                    }}
+                    onMouseUp={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.background = btnBg;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.background = btnBg;
+                    }}
+                  >
+                    {key}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Cancel/Close Footer Link */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem' }}>
+              <button 
+                type="button"
+                onClick={() => { setShowUpiModal(false); setUpiPin(''); setUpiError(''); }}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  color: 'rgba(255,255,255,0.4)', 
+                  cursor: 'pointer', 
+                  fontSize: '0.8rem',
+                  textDecoration: 'underline'
+                }}
+              >
+                Cancel Transaction
+              </button>
+            </div>
+            
           </div>
         </div>
       )}

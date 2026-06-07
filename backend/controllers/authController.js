@@ -48,7 +48,7 @@ export const registerUser = async (req, res) => {
       password: hashedPassword,
       phone,
       upiId,
-      walletBalance: 5000, // Pre-fund wallet with ₹5,000 for demo/testing convenience!
+      walletBalance: 0, // Starts with ₹0 balance
       role: 'user',
       status: 'active'
     });
