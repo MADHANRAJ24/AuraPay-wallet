@@ -62,9 +62,18 @@ const Profile = () => {
               <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>{user?.upiId}</div>
             </div>
 
-            <div className="badge badge-success" style={{ textTransform: 'capitalize', padding: '0.3rem 0.75rem', fontSize: '0.75rem' }}>
+            <div className="badge badge-success" style={{ textTransform: 'capitalize', padding: '0.3rem 0.75rem', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
               {user?.role} Account
             </div>
+
+            <div style={{ background: '#fff', padding: '10px', borderRadius: '14px', display: 'inline-flex', boxShadow: '0 8px 20px rgba(0,0,0,0.3)', marginBottom: '0.25rem' }}>
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(user?.upiId || '')}`} 
+                alt="My UPI QR Code"
+                style={{ width: '130px', height: '130px', display: 'block' }}
+              />
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Scan QR to pay me</div>
 
             <div style={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '1rem', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.8rem', textAlign: 'left', fontSize: '0.9rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
