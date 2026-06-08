@@ -365,12 +365,12 @@ const Dashboard = () => {
     }
   };
 
-  // Load real scannable QR code from QRServer API based on user's details
+  // Load real scannable QR code from Google Charts API based on user's details
   const renderMockQr = (upi) => {
     return (
       <div style={{ background: '#fff', padding: '12px', borderRadius: '16px', display: 'inline-flex', boxShadow: '0 10px 25px rgba(0,0,0,0.3)' }}>
         <img 
-          src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upi || '')}`} 
+          src={`https://chart.googleapis.com/chart?cht=qr&chs=150x150&chl=${encodeURIComponent(upi || '')}`} 
           alt="My UPI QR Code"
           style={{ width: '150px', height: '150px', display: 'block' }}
         />

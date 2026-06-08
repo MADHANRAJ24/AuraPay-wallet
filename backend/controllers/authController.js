@@ -63,6 +63,8 @@ export const registerUser = async (req, res) => {
           phone: user.phone,
           upiId: user.upiId,
           walletBalance: user.walletBalance,
+          upiLiteEnabled: user.upiLiteEnabled,
+          upiLiteBalance: user.upiLiteBalance,
           role: user.role,
           token: generateToken(user._id)
         }
@@ -107,6 +109,8 @@ export const loginUser = async (req, res) => {
         phone: user.phone,
         upiId: user.upiId,
         walletBalance: user.walletBalance,
+        upiLiteEnabled: user.upiLiteEnabled,
+        upiLiteBalance: user.upiLiteBalance,
         role: user.role,
         token: generateToken(user._id)
       }
@@ -133,6 +137,8 @@ export const getMe = async (req, res) => {
         phone: user.phone,
         upiId: user.upiId,
         walletBalance: user.walletBalance,
+        upiLiteEnabled: user.upiLiteEnabled,
+        upiLiteBalance: user.upiLiteBalance,
         role: user.role,
         status: user.status
       }

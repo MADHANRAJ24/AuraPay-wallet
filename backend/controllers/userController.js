@@ -108,6 +108,8 @@ export const updateProfile = async (req, res) => {
         phone: updatedUser.phone,
         upiId: updatedUser.upiId,
         walletBalance: updatedUser.walletBalance,
+        upiLiteEnabled: updatedUser.upiLiteEnabled,
+        upiLiteBalance: updatedUser.upiLiteBalance,
         role: updatedUser.role
       }
     });

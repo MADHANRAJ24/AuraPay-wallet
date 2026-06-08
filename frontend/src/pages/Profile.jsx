@@ -68,7 +68,7 @@ const Profile = () => {
 
             <div style={{ background: '#fff', padding: '10px', borderRadius: '14px', display: 'inline-flex', boxShadow: '0 8px 20px rgba(0,0,0,0.3)', marginBottom: '0.25rem' }}>
               <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(user?.upiId || '')}`} 
+                src={`https://chart.googleapis.com/chart?cht=qr&chs=130x130&chl=${encodeURIComponent(user?.upiId || '')}`} 
                 alt="My UPI QR Code"
                 style={{ width: '130px', height: '130px', display: 'block' }}
               />
