@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
+import LocalQRCode from '../components/LocalQRCode';
 import { User, Mail, Phone, Shield, Calendar, Wallet, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
 const Profile = () => {
@@ -67,11 +68,7 @@ const Profile = () => {
             </div>
 
             <div style={{ background: '#fff', padding: '10px', borderRadius: '14px', display: 'inline-flex', boxShadow: '0 8px 20px rgba(0,0,0,0.3)', marginBottom: '0.25rem' }}>
-              <img 
-                src={`https://chart.googleapis.com/chart?cht=qr&chs=130x130&chl=${encodeURIComponent(user?.upiId || '')}`} 
-                alt="My UPI QR Code"
-                style={{ width: '130px', height: '130px', display: 'block' }}
-              />
+              <LocalQRCode value={user?.upiId} size={130} />
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Scan QR to pay me</div>
 

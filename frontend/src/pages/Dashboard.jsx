@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
 import PlaidLinkButton from '../components/PlaidLinkButton';
 import ScratchCardModal from '../components/ScratchCardModal';
+import LocalQRCode from '../components/LocalQRCode';
 import { Gift, PieChart } from 'lucide-react';
 import { 
   Plus, 
@@ -365,15 +366,11 @@ const Dashboard = () => {
     }
   };
 
-  // Load real scannable QR code from Google Charts API based on user's details
+  // Load real scannable QR code locally based on user's details
   const renderMockQr = (upi) => {
     return (
       <div style={{ background: '#fff', padding: '12px', borderRadius: '16px', display: 'inline-flex', boxShadow: '0 10px 25px rgba(0,0,0,0.3)' }}>
-        <img 
-          src={`https://chart.googleapis.com/chart?cht=qr&chs=150x150&chl=${encodeURIComponent(upi || '')}`} 
-          alt="My UPI QR Code"
-          style={{ width: '150px', height: '150px', display: 'block' }}
-        />
+        <LocalQRCode value={upi} size={150} />
       </div>
     );
   };
