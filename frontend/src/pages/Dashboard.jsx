@@ -368,11 +368,7 @@ const Dashboard = () => {
 
   // Load real scannable QR code locally based on user's details
   const renderMockQr = (upi) => {
-    return (
-      <div style={{ background: '#fff', padding: '12px', borderRadius: '16px', display: 'inline-flex', boxShadow: '0 10px 25px rgba(0,0,0,0.3)' }}>
-        <LocalQRCode value={upi} size={150} />
-      </div>
-    );
+    return <LocalQRCode value={upi} size={150} />;
   };
 
   // Process transactions for Spend Analytics
