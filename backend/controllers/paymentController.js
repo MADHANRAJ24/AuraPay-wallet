@@ -19,13 +19,16 @@ export const addMoneyToWallet = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Linked bank account not found' });
     }
 
-    // Check if bank account has sufficient balance
-    if (bankAccount.balance < numAmount) {
+    // Deduct from bank atomically if balance is sufficient
+    const updatedBank = await BankAccount.findOneAndUpdate(
+      { _id: bankAccountId, userId, isLinked: true, balance: { $gte: numAmount } },
+      { $inc: { balance: -numAmount } },
+      { new: true }
+    );
+    if (!updatedBank) {
       return res.status(400).json({ success: false, message: 'Insufficient balance in bank account' });
     }
 
-    // Deduct from bank and add to user wallet (simulating transactional safety)
-    await BankAccount.findByIdAndUpdate(bankAccountId, { $inc: { balance: -numAmount } });
     const updatedUser = await User.findByIdAndUpdate(userId, { $inc: { walletBalance: numAmount } }, { new: true });
 
     // Create a transaction record
@@ -67,13 +70,15 @@ export const rechargeMobile = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid recharge details' });
     }
 
-    // Verify wallet has sufficient funds
-    if (req.user.walletBalance < numAmount) {
+    // Deduct wallet balance atomically if balance is sufficient
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: userId, walletBalance: { $gte: numAmount } },
+      { $inc: { walletBalance: -numAmount } },
+      { new: true }
+    );
+    if (!updatedUser) {
       return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
     }
-
-    // Deduct wallet balance
-    const updatedUser = await User.findByIdAndUpdate(userId, { $inc: { walletBalance: -numAmount } }, { new: true });
 
     // Log transaction
     const transaction = await Transaction.create({
@@ -114,13 +119,15 @@ export const payUtilityBill = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid bill details' });
     }
 
-    // Verify wallet has sufficient funds
-    if (req.user.walletBalance < numAmount) {
+    // Deduct wallet balance atomically if balance is sufficient
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: userId, walletBalance: { $gte: numAmount } },
+      { $inc: { walletBalance: -numAmount } },
+      { new: true }
+    );
+    if (!updatedUser) {
       return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
     }
-
-    // Deduct wallet balance
-    const updatedUser = await User.findByIdAndUpdate(userId, { $inc: { walletBalance: -numAmount } }, { new: true });
 
     // Log transaction
     const transaction = await Transaction.create({

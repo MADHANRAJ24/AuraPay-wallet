@@ -63,7 +63,8 @@ export const verifyPayment = async (req, res) => {
     const numAmount = Number(amount);
     let verified = false;
 
-    if (isMock) {
+    const isMockAllowed = process.env.RAZORPAY_KEY_ID === 'rzp_test_mockKeyId123' || !process.env.RAZORPAY_KEY_ID;
+    if (isMock && isMockAllowed) {
       // Mock mode verification bypass
       verified = true;
     } else {

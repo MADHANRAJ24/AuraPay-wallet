@@ -15,6 +15,7 @@ import {
   Lock,
   ListFilter
 } from 'lucide-react';
+import UserAvatar from '../components/UserAvatar';
 
 const AdminPanel = () => {
   const { user, token } = useAuth();
@@ -296,8 +297,14 @@ const AdminPanel = () => {
                 <tbody>
                   {allUsers.map((u) => (
                     <tr key={u._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: '0.9rem' }}>
-                      <td style={{ padding: '1rem 0.75rem', fontWeight: 600 }}>
-                        {u.name} {u.role === 'admin' && <span style={{ color: 'var(--warning)', fontSize: '0.7rem', border: '1px solid rgba(245,158,11,0.2)', padding: '1px 4px', borderRadius: '4px', marginLeft: '4px' }}>Admin</span>}
+                      <td style={{ padding: '1rem 0.75rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                          <UserAvatar name={u.name} size={32} />
+                          <div>
+                            <span style={{ fontWeight: 600 }}>{u.name}</span>
+                            {u.role === 'admin' && <span style={{ color: 'var(--warning)', fontSize: '0.7rem', border: '1px solid rgba(245,158,11,0.2)', padding: '1px 4px', borderRadius: '4px', marginLeft: '6px' }}>Admin</span>}
+                          </div>
+                        </div>
                       </td>
                       <td style={{ padding: '1rem 0.75rem', color: 'var(--accent-secondary)' }}>{u.upiId}</td>
                       <td style={{ padding: '1rem 0.75rem' }}>

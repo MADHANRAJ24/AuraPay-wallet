@@ -21,6 +21,7 @@ const BankAccountModel = {
   create: (data) => isFallback() ? BankAccountFallback.create(data) : MongoBankAccountModel.create(data),
   findByIdAndUpdate: (id, update, options) => isFallback() ? BankAccountFallback.findByIdAndUpdate(id, update, options) : MongoBankAccountModel.findByIdAndUpdate(id, update, options),
   updateOne: (query, update) => isFallback() ? BankAccountFallback.updateOne(query, update) : MongoBankAccountModel.updateOne(query, update),
+  findOneAndUpdate: (query, update, options) => isFallback() ? BankAccountFallback.findOneAndUpdate(query, update, options) : MongoBankAccountModel.findOneAndUpdate(query, update, options),
   deleteOne: (query) => isFallback() ? BankAccountFallback.deleteOne(query) : MongoBankAccountModel.deleteOne(query)
 };
 

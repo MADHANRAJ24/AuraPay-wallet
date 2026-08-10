@@ -45,6 +45,61 @@ const SocketListener = () => {
     }
   };
 
+  const speakAnnouncement = (type, title, message) => {
+    const isEnabled = localStorage.getItem('aurapay_soundbox_enabled') !== 'false';
+    if (!isEnabled) return;
+
+    try {
+      // Extract amount: e.g. "Received ₹100 from Alice" or "₹100 sent successfully"
+      const amountMatch = message.match(/₹\s*([0-9,.]+)/) || title.match(/₹\s*([0-9,.]+)/);
+      const amount = amountMatch ? amountMatch[1] : '';
+
+      const isReceive = type === 'receive';
+      const voiceLang = localStorage.getItem('aurapay_soundbox_lang') || 'en'; // 'en', 'hi', 'bilingual'
+      const voiceRate = parseFloat(localStorage.getItem('aurapay_soundbox_rate') || '1.0');
+
+      let textToSpeak = '';
+      
+      if (amount) {
+        if (voiceLang === 'hi') {
+          textToSpeak = isReceive
+            ? `आभामणी में ${amount} रुपये सफलतापूर्वक प्राप्त हुए।`
+            : `आभामणी से ${amount} रुपये सफलतापूर्वक भेजे गए।`;
+        } else if (voiceLang === 'bilingual') {
+          textToSpeak = isReceive
+            ? `रुपये ${amount} प्राप्त हुए! Received Rupees ${amount} on AuraPay.`
+            : `रुपये ${amount} भेजे गए! Sent Rupees ${amount} on AuraPay.`;
+        } else {
+          textToSpeak = isReceive
+            ? `Rupees ${amount} received successfully on AuraPay.`
+            : `Rupees ${amount} sent successfully on AuraPay.`;
+        }
+      } else {
+        textToSpeak = `${title}. ${message}`;
+      }
+
+      // Cancel any running speech to avoid overlapping
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.rate = voiceRate;
+      utterance.pitch = 1.0;
+
+      const voices = window.speechSynthesis.getVoices();
+      if (voiceLang === 'hi' || voiceLang === 'bilingual') {
+        const hindiVoice = voices.find(v => v.lang.startsWith('hi-') || v.lang.startsWith('mr-'));
+        if (hindiVoice) utterance.voice = hindiVoice;
+      } else {
+        const englishVoice = voices.find(v => v.lang.startsWith('en-') && (v.name.includes('Google') || v.name.includes('Natural')));
+        if (englishVoice) utterance.voice = englishVoice;
+      }
+
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.warn('Soundbox speech synthesis failed:', e);
+    }
+  };
+
   const showToast = (data) => {
     const id = Date.now() + Math.random().toString(36).substring(2, 9);
     const newToast = {
@@ -57,6 +112,7 @@ const SocketListener = () => {
 
     setToasts((prev) => [newToast, ...prev]);
     playChime(data.type);
+    speakAnnouncement(data.type, data.title, data.message);
 
     // Auto dismiss after 5 seconds
     setTimeout(() => {

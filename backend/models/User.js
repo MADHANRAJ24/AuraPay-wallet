@@ -25,6 +25,7 @@ const UserModel = {
   create: (data) => isFallback() ? UserFallback.create(data) : MongoUserModel.create(data),
   findByIdAndUpdate: (id, update, options) => isFallback() ? UserFallback.findByIdAndUpdate(id, update, options) : MongoUserModel.findByIdAndUpdate(id, update, options),
   updateOne: (query, update) => isFallback() ? UserFallback.updateOne(query, update) : MongoUserModel.updateOne(query, update),
+  findOneAndUpdate: (query, update, options) => isFallback() ? UserFallback.findOneAndUpdate(query, update, options) : MongoUserModel.findOneAndUpdate(query, update, options),
   deleteOne: (query) => isFallback() ? UserFallback.deleteOne(query) : MongoUserModel.deleteOne(query)
 };
 

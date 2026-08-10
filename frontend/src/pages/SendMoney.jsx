@@ -4,6 +4,7 @@ import { useWallet } from '../context/WalletContext';
 import { useAuth } from '../context/AuthContext';
 import { Send, QrCode, AlertCircle, CheckCircle, Search, Sparkles, Loader2, Camera, Upload } from 'lucide-react';
 import jsQR from 'jsqr';
+import UserAvatar from '../components/UserAvatar';
 
 const SendMoney = () => {
   const { verifyRecipient, sendMoney, requestMoney } = useWallet();
@@ -20,19 +21,6 @@ const SendMoney = () => {
   const [requestLoading, setRequestLoading] = useState(false);
   const [requestError, setRequestError] = useState('');
   const [requestSuccess, setRequestSuccess] = useState(null);
-
-  const getAvatarGradient = (name = '') => {
-    const colors = [
-      'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)', // Violet
-      'linear-gradient(135deg, #60a5fa 0%, #2563eb 100%)', // Blue
-      'linear-gradient(135deg, #34d399 0%, #059669 100%)', // Emerald
-      'linear-gradient(135deg, #fb7185 0%, #e11d48 100%)', // Rose
-      'linear-gradient(135deg, #fbbf24 0%, #d97706 100%)', // Amber
-    ];
-    let sum = 0;
-    for (let i = 0; i < name.length; i++) sum += name.charCodeAt(i);
-    return colors[sum % colors.length];
-  };
 
   // Mode: 'send' or 'scan'
   const [mode, setMode] = useState(searchParams.get('scan') === 'true' ? 'scan' : 'send');
@@ -513,9 +501,7 @@ const SendMoney = () => {
                 {verifiedUser && (
                   <div className="glass-card animate-fade-in" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', border: '1px solid rgba(16, 185, 129, 0.25)', background: 'rgba(16, 185, 129, 0.03)', marginTop: '0.5rem', width: '100%' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '42px', height: '42px', borderRadius: '50%', background: getAvatarGradient(verifiedUser.name), color: '#fff', fontSize: '1.1rem', fontWeight: 700 }}>
-                        {verifiedUser.name.charAt(0).toUpperCase()}
-                      </div>
+                      <UserAvatar name={verifiedUser.name} size={42} />
                       <div style={{ textAlign: 'left' }}>
                         <div style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                           <CheckCircle size={12} />
@@ -568,9 +554,7 @@ const SendMoney = () => {
                             className="search-item-hover animate-fade-in"
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '42px', height: '42px', borderRadius: '50%', background: getAvatarGradient(u.name), color: '#fff', fontSize: '1.1rem', fontWeight: 700, boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
-                                {u.name.charAt(0).toUpperCase()}
-                              </div>
+                              <UserAvatar name={u.name} size={42} />
                               <div style={{ textAlign: 'left' }}>
                                 <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.95rem' }}>{u.name}</div>
                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>

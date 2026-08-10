@@ -77,14 +77,23 @@ export const sendMoney = async (req, res) => {
     const isUpiLiteUsed = req.user.upiLiteEnabled && numAmount <= 200 && req.user.upiLiteBalance >= numAmount;
 
     if (isUpiLiteUsed) {
-      // Deduct from UPI Lite balance
-      await User.findByIdAndUpdate(senderId, { $inc: { upiLiteBalance: -numAmount } });
+      // Deduct from UPI Lite balance atomically if sufficient
+      const updatedSender = await User.findOneAndUpdate(
+        { _id: senderId, upiLiteBalance: { $gte: numAmount } },
+        { $inc: { upiLiteBalance: -numAmount } }
+      );
+      if (!updatedSender) {
+        return res.status(400).json({ success: false, message: 'Insufficient UPI Lite balance' });
+      }
     } else {
-      // Deduct from main wallet balance
-      if (req.user.walletBalance < numAmount) {
+      // Deduct from main wallet balance atomically if sufficient
+      const updatedSender = await User.findOneAndUpdate(
+        { _id: senderId, walletBalance: { $gte: numAmount } },
+        { $inc: { walletBalance: -numAmount } }
+      );
+      if (!updatedSender) {
         return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
       }
-      await User.findByIdAndUpdate(senderId, { $inc: { walletBalance: -numAmount } });
     }
 
     // --- FRAUD DETECTION RULES ---
@@ -301,13 +310,24 @@ export const handlePaymentRequest = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    if (request.status !== 'pending') {
+    // Acquire atomic status transition lock
+    const updatedRequest = await PaymentRequest.updateOne(
+      { _id: id, receiverId: receiverId, status: 'pending' },
+      { $set: { status: action === 'approve' ? 'approved' : 'declined' } }
+    );
+
+    if (updatedRequest.matchedCount === 0) {
+      const exists = await PaymentRequest.findById(id);
+      if (!exists) {
+        return res.status(404).json({ success: false, message: 'Payment request not found' });
+      }
+      if (exists.receiverId.toString() !== receiverId.toString()) {
+        return res.status(403).json({ success: false, message: 'Unauthorized' });
+      }
       return res.status(400).json({ success: false, message: 'Request is already processed' });
     }
 
     if (action === 'decline') {
-      await PaymentRequest.findByIdAndUpdate(id, { status: 'declined' });
-      
       const io = req.app.get('socketio');
       if (io) {
         io.to(request.senderId.toString()).emit('request_declined', {
@@ -319,11 +339,19 @@ export const handlePaymentRequest = async (req, res) => {
     }
 
     if (action === 'approve') {
-      if (req.user.walletBalance < request.amount) {
+      // Deduct balance atomically if sufficient
+      const updatedReceiver = await User.findOneAndUpdate(
+        { _id: receiverId, walletBalance: { $gte: request.amount } },
+        { $inc: { walletBalance: -request.amount } }
+      );
+      
+      if (!updatedReceiver) {
+        // Rollback request status lock
+        await PaymentRequest.findByIdAndUpdate(id, { status: 'pending' });
         return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
       }
 
-      await User.findByIdAndUpdate(receiverId, { $inc: { walletBalance: -request.amount } });
+      // Credit sender
       await User.findByIdAndUpdate(request.senderId, { $inc: { walletBalance: request.amount } });
 
       const transaction = await Transaction.create({
@@ -338,8 +366,6 @@ export const handlePaymentRequest = async (req, res) => {
         status: 'success',
         remarks: request.remarks || 'Approved payment request'
       });
-
-      await PaymentRequest.findByIdAndUpdate(id, { status: 'approved' });
 
       const io = req.app.get('socketio');
       if (io) {
@@ -420,11 +446,22 @@ export const claimReward = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    if (reward.isClaimed) {
+    // Acquire atomic status update lock
+    const updatedReward = await Reward.updateOne(
+      { _id: id, userId: userId, isClaimed: false },
+      { $set: { isClaimed: true } }
+    );
+
+    if (updatedReward.matchedCount === 0) {
+      const exists = await Reward.findById(id);
+      if (!exists) {
+        return res.status(404).json({ success: false, message: 'Reward card not found' });
+      }
+      if (exists.userId.toString() !== userId.toString()) {
+        return res.status(403).json({ success: false, message: 'Unauthorized' });
+      }
       return res.status(400).json({ success: false, message: 'Reward already claimed' });
     }
-
-    await Reward.findByIdAndUpdate(id, { isClaimed: true });
 
     const updatedUser = await User.findByIdAndUpdate(userId, { $inc: { walletBalance: reward.amount } }, { new: true });
 
@@ -488,20 +525,28 @@ export const fundUpiLite = async (req, res) => {
     }
 
     if (action === 'load') {
-      if (req.user.walletBalance < numAmount) {
-        return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
-      }
-
       if (req.user.upiLiteBalance + numAmount > 2000) {
         return res.status(400).json({ success: false, message: 'UPI Lite balance cannot exceed ₹2,000' });
       }
 
-      await User.findByIdAndUpdate(userId, { 
-        $inc: { 
-          walletBalance: -numAmount,
-          upiLiteBalance: numAmount
-        } 
-      });
+      const updatedUser = await User.findOneAndUpdate(
+        { 
+          _id: userId, 
+          walletBalance: { $gte: numAmount },
+          upiLiteBalance: { $lte: 2000 - numAmount }
+        },
+        { 
+          $inc: { 
+            walletBalance: -numAmount,
+            upiLiteBalance: numAmount
+          } 
+        },
+        { new: true }
+      );
+
+      if (!updatedUser) {
+        return res.status(400).json({ success: false, message: 'Insufficient wallet balance or UPI Lite limit exceeded' });
+      }
 
       await Transaction.create({
         senderId: userId,
@@ -528,16 +573,23 @@ export const fundUpiLite = async (req, res) => {
     }
 
     if (action === 'unload') {
-      if (req.user.upiLiteBalance < numAmount) {
+      const updatedUser = await User.findOneAndUpdate(
+        { 
+          _id: userId, 
+          upiLiteBalance: { $gte: numAmount }
+        },
+        { 
+          $inc: { 
+            walletBalance: numAmount,
+            upiLiteBalance: -numAmount
+          } 
+        },
+        { new: true }
+      );
+
+      if (!updatedUser) {
         return res.status(400).json({ success: false, message: 'Insufficient UPI Lite balance' });
       }
-
-      await User.findByIdAndUpdate(userId, { 
-        $inc: { 
-          walletBalance: numAmount,
-          upiLiteBalance: -numAmount
-        } 
-      });
 
       await Transaction.create({
         senderId: userId,

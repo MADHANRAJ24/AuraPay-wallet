@@ -207,6 +207,37 @@ export const getFallbackModel = (collectionName) => {
       save();
       return { matchedCount: 1, modifiedCount: 1 };
     },
+    findOneAndUpdate: async (query, update, options = {}) => {
+      const items = getCollection();
+      const item = items.find(item => {
+        for (let key in query) {
+          const val = query[key];
+          if (val && typeof val === 'object') {
+            if (val.$gte !== undefined && item[key] < val.$gte) return false;
+            if (val.$lte !== undefined && item[key] > val.$lte) return false;
+          } else {
+            if (item[key] !== val) return false;
+          }
+        }
+        return true;
+      });
+      if (!item) return null;
+      
+      let updatedFields = update;
+      if (update.$set) updatedFields = update.$set;
+      if (update.$inc) {
+        for (let k in update.$inc) {
+          item[k] = (item[k] || 0) + update.$inc[k];
+        }
+      }
+      for (let key in updatedFields) {
+        if (key !== '$inc' && key !== '$set') {
+          item[key] = updatedFields[key];
+        }
+      }
+      save();
+      return item;
+    },
     deleteOne: async (query) => {
       const items = getCollection();
       const idx = items.findIndex(item => {

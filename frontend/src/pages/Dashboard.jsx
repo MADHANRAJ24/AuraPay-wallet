@@ -5,6 +5,7 @@ import { useWallet } from '../context/WalletContext';
 import PlaidLinkButton from '../components/PlaidLinkButton';
 import ScratchCardModal from '../components/ScratchCardModal';
 import LocalQRCode from '../components/LocalQRCode';
+import UserAvatar from '../components/UserAvatar';
 import { Gift, PieChart } from 'lucide-react';
 import { 
   Plus, 
@@ -24,7 +25,8 @@ import {
   Link2,
   Trash2,
   Lock,
-  Wallet
+  Wallet,
+  Volume2
 } from 'lucide-react';
 
 const Dashboard = () => {
@@ -72,6 +74,73 @@ const Dashboard = () => {
   const [selectedReward, setSelectedReward] = useState(null);
   const [activeRequestToPay, setActiveRequestToPay] = useState(null);
   const [requestActionLoading, setRequestActionLoading] = useState(false);
+
+  // AuraPay Smart Soundbox state
+  const [soundboxEnabled, setSoundboxEnabled] = useState(localStorage.getItem('aurapay_soundbox_enabled') !== 'false');
+  const [soundboxLang, setSoundboxLang] = useState(localStorage.getItem('aurapay_soundbox_lang') || 'en');
+  const [soundboxRate, setSoundboxRate] = useState(parseFloat(localStorage.getItem('aurapay_soundbox_rate') || '1.0'));
+
+  const toggleSoundbox = () => {
+    const nextVal = !soundboxEnabled;
+    setSoundboxEnabled(nextVal);
+    localStorage.setItem('aurapay_soundbox_enabled', nextVal.toString());
+  };
+
+  const updateSoundboxLang = (lang) => {
+    setSoundboxLang(lang);
+    localStorage.setItem('aurapay_soundbox_lang', lang);
+  };
+
+  const updateSoundboxRate = (rate) => {
+    setSoundboxRate(rate);
+    localStorage.setItem('aurapay_soundbox_rate', rate.toString());
+  };
+
+  const handleTestSoundbox = () => {
+    try {
+      let textToSpeak = '';
+      if (soundboxLang === 'hi') {
+        textToSpeak = 'आभामणी में एक सौ रुपये सफलतापूर्वक प्राप्त हुए।';
+      } else if (soundboxLang === 'bilingual') {
+        textToSpeak = 'रुपये एक सौ प्राप्त हुए! Received Rupees 100 on AuraPay.';
+      } else {
+        textToSpeak = 'Rupees 100 received successfully on AuraPay.';
+      }
+
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.rate = soundboxRate;
+      utterance.pitch = 1.0;
+
+      const voices = window.speechSynthesis.getVoices();
+      if (soundboxLang === 'hi' || soundboxLang === 'bilingual') {
+        const hindiVoice = voices.find(v => v.lang.startsWith('hi-') || v.lang.startsWith('mr-'));
+        if (hindiVoice) utterance.voice = hindiVoice;
+      } else {
+        const englishVoice = voices.find(v => v.lang.startsWith('en-') && (v.name.includes('Google') || v.name.includes('Natural')));
+        if (englishVoice) utterance.voice = englishVoice;
+      }
+
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.warn('Speech synthesis test failed:', e);
+    }
+  };
+
+  // Budget Planner states
+  const [budgetLimit, setBudgetLimit] = useState(parseInt(localStorage.getItem('aurapay_monthly_budget') || '10000', 10));
+  const [isEditingBudget, setIsEditingBudget] = useState(false);
+  const [tempBudget, setTempBudget] = useState(budgetLimit.toString());
+
+  const handleSaveBudget = (e) => {
+    e.preventDefault();
+    const parsed = parseInt(tempBudget, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      setBudgetLimit(parsed);
+      localStorage.setItem('aurapay_monthly_budget', parsed.toString());
+      setIsEditingBudget(false);
+    }
+  };
 
   // Dynamically load Razorpay checkout script from CDN
   useEffect(() => {
@@ -376,15 +445,30 @@ const Dashboard = () => {
     let billTotal = 0;
     let rechargeTotal = 0;
     let transferTotal = 0;
+    let currentMonthTotal = 0;
+
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
     
     transactions.forEach(tx => {
       if (tx.status === 'success') {
+        let isExpenditure = false;
         if (tx.type === 'bill') {
           billTotal += tx.amount;
+          isExpenditure = true;
         } else if (tx.type === 'recharge') {
           rechargeTotal += tx.amount;
+          isExpenditure = true;
         } else if (tx.type === 'send') {
           transferTotal += tx.amount;
+          isExpenditure = true;
+        }
+
+        if (isExpenditure && tx.createdAt) {
+          const txDate = new Date(tx.createdAt);
+          if (txDate.getFullYear() === currentYear && txDate.getMonth() === currentMonth) {
+            currentMonthTotal += tx.amount;
+          }
         }
       }
     });
@@ -394,7 +478,8 @@ const Dashboard = () => {
       bill: billTotal,
       recharge: rechargeTotal,
       transfer: transferTotal,
-      total
+      total,
+      currentMonthSpent: currentMonthTotal
     };
   };
 
@@ -620,6 +705,79 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* AURAPAY SOUNDBOX CARD */}
+          <div className="glass-panel animate-fade-in" style={{ padding: '1.5rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.4) 100%)', border: '1px solid rgba(139, 92, 246, 0.15)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ background: 'rgba(139, 92, 246, 0.1)', padding: '0.4rem', borderRadius: '8px', color: 'var(--accent-primary)', display: 'flex' }}>
+                  <Volume2 size={16} />
+                </div>
+                <div>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>AuraPay Smart Soundbox</h4>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Bilingual voice transaction announcer</div>
+                </div>
+              </div>
+              
+              <button 
+                onClick={toggleSoundbox}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: soundboxEnabled ? 'var(--success)' : 'var(--text-muted)' }}
+              >
+                {soundboxEnabled ? (
+                  <div style={{ width: '36px', height: '20px', borderRadius: '10px', background: 'var(--success)', position: 'relative', transition: '0.2s' }}>
+                    <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#fff', position: 'absolute', right: '2px', top: '2px' }} />
+                  </div>
+                ) : (
+                  <div style={{ width: '36px', height: '20px', borderRadius: '10px', background: 'rgba(255,255,255,0.1)', position: 'relative', transition: '0.2s' }}>
+                    <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#666', position: 'absolute', left: '2px', top: '2px' }} />
+                  </div>
+                )}
+              </button>
+            </div>
+
+            {soundboxEnabled && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Announce Language</label>
+                    <select
+                      value={soundboxLang}
+                      onChange={(e) => updateSoundboxLang(e.target.value)}
+                      className="glass-input"
+                      style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem', background: '#0a0a0f', color: '#fff', borderRadius: '6px', height: 'auto', border: '1px solid rgba(255,255,255,0.1)' }}
+                    >
+                      <option value="en">English Voice</option>
+                      <option value="hi">Hindi Voice (हिंदी)</option>
+                      <option value="bilingual">Bilingual (Hinglish)</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Voice Speed</label>
+                    <select
+                      value={soundboxRate}
+                      onChange={(e) => updateSoundboxRate(parseFloat(e.target.value))}
+                      className="glass-input"
+                      style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem', background: '#0a0a0f', color: '#fff', borderRadius: '6px', height: 'auto', border: '1px solid rgba(255,255,255,0.1)' }}
+                    >
+                      <option value="0.85">Slow</option>
+                      <option value="1.0">Normal</option>
+                      <option value="1.15">Fast</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={handleTestSoundbox}
+                  className="btn btn-secondary glow-btn"
+                  style={{ padding: '0.45rem 1rem', fontSize: '0.8rem', width: '100%', borderRadius: '8px', border: '1px solid rgba(139, 92, 246, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+                >
+                  <Volume2 size={14} />
+                  Test Voice Announcement (₹100)
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* QUICK ACTION BUTTONS */}
           <div className="glass-panel" style={{ padding: '1.5rem' }}>
             <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', fontWeight: 600 }}>Quick Actions</h3>
@@ -819,6 +977,135 @@ const Dashboard = () => {
               </div>
             )}
           </div>
+
+          {/* MONTHLY BUDGET PLANNER */}
+          <div className="glass-panel animate-fade-in" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left', marginTop: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 600, margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span role="img" aria-label="budget">🎯</span>
+                Monthly Budget Tracker
+              </h3>
+              
+              {!isEditingBudget && (
+                <button 
+                  onClick={() => {
+                    setTempBudget(budgetLimit.toString());
+                    setIsEditingBudget(true);
+                  }}
+                  className="btn btn-secondary"
+                  style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderRadius: '6px' }}
+                >
+                  Set Limit
+                </button>
+              )}
+            </div>
+
+            {isEditingBudget ? (
+              <form onSubmit={handleSaveBudget} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '0.8rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Configure Monthly Limit (₹)</label>
+                  <input
+                    type="number"
+                    value={tempBudget}
+                    onChange={(e) => setTempBudget(e.target.value.replace(/\D/g, ''))}
+                    className="glass-input"
+                    style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem' }}
+                    min="100"
+                    required
+                  />
+                </div>
+                
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => setIsEditingBudget(false)} 
+                    className="btn btn-secondary" 
+                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '6px' }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary" 
+                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '6px' }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Month Spending</span>
+                  <div>
+                    <span style={{ fontSize: '1.25rem', fontWeight: 800 }}>
+                      ₹{Number(analytics.currentMonthSpent || 0).toLocaleString('en-IN')}
+                    </span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      {' '}/ ₹{budgetLimit.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                {(() => {
+                  const spent = analytics.currentMonthSpent || 0;
+                  const ratio = budgetLimit > 0 ? spent / budgetLimit : 0;
+                  const percent = Math.min(100, Math.round(ratio * 100));
+                  
+                  let progressColor = 'var(--success)';
+                  let statusLabel = 'On Track';
+                  let statusBg = 'var(--success-bg)';
+                  
+                  if (ratio >= 1.0) {
+                    progressColor = 'var(--danger)';
+                    statusLabel = 'Over Limit';
+                    statusBg = 'var(--danger-bg)';
+                  } else if (ratio >= 0.75) {
+                    progressColor = 'var(--warning)';
+                    statusLabel = 'Warning';
+                    statusBg = 'var(--warning-bg)';
+                  }
+
+                  return (
+                    <>
+                      <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
+                        <div 
+                          style={{ 
+                            width: `${percent}%`, 
+                            height: '100%', 
+                            background: progressColor, 
+                            borderRadius: '4px', 
+                            transition: 'width 0.4s ease-out',
+                            boxShadow: `0 0 10px ${progressColor}`
+                          }} 
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>
+                          {percent}% Used
+                        </span>
+                        <span className="badge" style={{ background: statusBg, color: progressColor, padding: '0.15rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>
+                          {statusLabel}
+                        </span>
+                      </div>
+
+                      {/* Insight statement */}
+                      <p style={{ fontSize: '0.8rem', color: ratio >= 1.0 ? 'var(--danger)' : 'var(--text-secondary)', margin: '0.2rem 0 0 0', lineHeight: 1.4, borderLeft: `2px solid ${progressColor}`, paddingLeft: '0.5rem' }}>
+                        {ratio >= 1.0 
+                          ? `Alert: You've exceeded your monthly limit by ₹${Math.round(spent - budgetLimit).toLocaleString('en-IN')}! Dial down your outlays.`
+                          : ratio >= 0.75 
+                            ? `Warning: You have used ${percent}% of your budget. Only ₹${Math.round(budgetLimit - spent).toLocaleString('en-IN')} remaining.`
+                            : `You have ₹${Math.round(budgetLimit - spent).toLocaleString('en-IN')} left this month. You are spending responsibly!`
+                        }
+                      </p>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -857,12 +1144,18 @@ const Dashboard = () => {
                   ? tx.senderUpi 
                   : tx.remarks;
 
+              const isP2P = tx.type === 'send' || tx.type === 'receive';
+
               return (
                 <div key={tx._id} className="glass-card animate-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.9rem 1.2rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ background: 'rgba(255,255,255,0.04)', padding: '0.6rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      {details.icon}
-                    </div>
+                    {isP2P ? (
+                      <UserAvatar name={counterpartName} size={36} />
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', padding: '0.55rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)', width: '36px', height: '36px', boxSizing: 'border-box', flexShrink: 0 }}>
+                        {details.icon}
+                      </div>
+                    )}
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{counterpartName}</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '220px' }}>

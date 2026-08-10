@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
 import LocalQRCode from '../components/LocalQRCode';
+import UserAvatar from '../components/UserAvatar';
 import { User, Mail, Phone, Shield, Calendar, Wallet, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
 const Profile = () => {
@@ -54,9 +55,7 @@ const Profile = () => {
         {/* User Card info summary */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)', width: '80px', height: '80px', borderRadius: '50%', boxShadow: '0 0 20px rgba(139,92,246,0.15)', marginBottom: '0.5rem' }}>
-              <User size={40} color="var(--accent-primary)" />
-            </div>
+            <UserAvatar name={user?.name} size={80} style={{ marginBottom: '0.5rem' }} />
             
             <div>
               <h2 style={{ fontSize: '1.4rem', fontWeight: 700 }}>{user?.name}</h2>

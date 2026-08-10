@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '../context/WalletContext';
 import { useAuth } from '../context/AuthContext';
+import UserAvatar from '../components/UserAvatar';
 import { 
   ArrowUpRight, 
   ArrowDownLeft, 
@@ -266,6 +267,8 @@ const Transactions = () => {
                 ? 'var(--text-primary)' 
                 : 'var(--success)';
 
+              const isP2P = tx.type === 'send' || tx.type === 'receive';
+
               return (
                 <div 
                   key={tx._id} 
@@ -274,9 +277,13 @@ const Transactions = () => {
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem', cursor: 'pointer', hover: { transform: 'scale(1.01)' } }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', padding: '0.5rem', borderRadius: '10px' }}>
-                      {cfg.icon}
-                    </div>
+                    {isP2P ? (
+                      <UserAvatar name={name} size={36} />
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', padding: '0.55rem', borderRadius: '10px', width: '36px', height: '36px', boxSizing: 'border-box', flexShrink: 0 }}>
+                        {cfg.icon}
+                      </div>
+                    )}
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{name}</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{upi}</div>

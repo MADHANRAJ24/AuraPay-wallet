@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Wallet, LogOut, Menu, X, Shield, History, Send, CreditCard, LayoutDashboard, User } from 'lucide-react';
+import UserAvatar from './UserAvatar';
+
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -99,9 +101,7 @@ const Navbar = () => {
         {/* User Balance & Actions */}
         <div style={{ display: 'none', alignItems: 'center', gap: '1rem' }} className="desktop-menu">
           <Link to="/profile" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'inherit', padding: '0.4rem 0.8rem', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)', width: '32px', height: '32px', borderRadius: '50%' }}>
-              <User size={16} color="var(--accent-primary)" />
-            </div>
+            <UserAvatar name={user.name} size={32} />
             <div style={{ textAlign: 'left' }}>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 400 }}>{user.name}</div>
               <div style={{ fontSize: '0.85rem', color: 'var(--success)', fontWeight: 700 }}>
@@ -190,9 +190,7 @@ const Navbar = () => {
           )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)', width: '36px', height: '36px', borderRadius: '50%' }}>
-              <User size={18} color="var(--accent-primary)" />
-            </div>
+            <UserAvatar name={user.name} size={36} />
             <div>
               <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{user.name}</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{user.upiId}</div>
