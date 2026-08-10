@@ -13,7 +13,9 @@ import {
   UserCheck, 
   BarChart3, 
   Lock,
-  ListFilter
+  ListFilter,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import UserAvatar from '../components/UserAvatar';
 
@@ -30,6 +32,7 @@ const AdminPanel = () => {
 
   // Tab: 'users', 'transactions', 'security'
   const [activeTab, setActiveTab] = useState('users');
+  const [showAllBalances, setShowAllBalances] = useState(false);
 
   // Admin Data states
   const [stats, setStats] = useState(null);
@@ -289,7 +292,19 @@ const AdminPanel = () => {
                     <th style={{ padding: '0.75rem' }}>Name</th>
                     <th style={{ padding: '0.75rem' }}>UPI ID</th>
                     <th style={{ padding: '0.75rem' }}>Phone / Email</th>
-                    <th style={{ padding: '0.75rem' }}>Wallet Balance</th>
+                    <th style={{ padding: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <span>Wallet Balance</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowAllBalances(!showAllBalances)}
+                          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', cursor: 'pointer', padding: '0.1rem 0.2rem', display: 'flex', color: 'rgba(255,255,255,0.7)', transition: 'all 0.2s', alignItems: 'center' }}
+                          title={showAllBalances ? "Hide Balances" : "Show Balances"}
+                        >
+                          {showAllBalances ? <EyeOff size={12} /> : <Eye size={12} />}
+                        </button>
+                      </div>
+                    </th>
                     <th style={{ padding: '0.75rem' }}>Status</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right' }}>Actions</th>
                   </tr>
@@ -312,7 +327,7 @@ const AdminPanel = () => {
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{u.email}</div>
                       </td>
                       <td style={{ padding: '1rem 0.75rem', fontWeight: 700, color: 'var(--success)' }}>
-                        ₹{Number(u.walletBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        {showAllBalances ? `₹${Number(u.walletBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹ ••••••.••'}
                       </td>
                       <td style={{ padding: '1rem 0.75rem' }}>
                         <span className={u.status === 'blocked' ? "badge badge-danger" : "badge badge-success"} style={{ fontSize: '0.7rem' }}>
