@@ -148,3 +148,29 @@ export const getMe = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+export const verifyPassword = async (req, res) => {
+  const { password } = req.body;
+  const userId = req.user._id;
+
+  try {
+    if (!password) {
+      return res.status(400).json({ success: false, message: 'Please provide password' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Incorrect password' });
+    }
+
+    res.json({ success: true, message: 'Password verified successfully' });
+  } catch (error) {
+    console.error('Verify Password Error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

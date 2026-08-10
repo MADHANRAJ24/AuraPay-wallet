@@ -6,7 +6,7 @@ import PlaidLinkButton from '../components/PlaidLinkButton';
 import ScratchCardModal from '../components/ScratchCardModal';
 import LocalQRCode from '../components/LocalQRCode';
 import UserAvatar from '../components/UserAvatar';
-import { Gift, PieChart } from 'lucide-react';
+import { Gift, PieChart, Eye, EyeOff } from 'lucide-react';
 import { 
   Plus, 
   Send, 
@@ -94,6 +94,61 @@ const Dashboard = () => {
   const updateSoundboxRate = (rate) => {
     setSoundboxRate(rate);
     localStorage.setItem('aurapay_soundbox_rate', rate.toString());
+  };
+
+  // Hide/Unhide Account Balance Security state
+  const [showBalance, setShowBalance] = useState(localStorage.getItem('aurapay_show_balance') === 'true');
+  const [showVerifyPasswordModal, setShowVerifyPasswordModal] = useState(false);
+  const [verifyPasswordInput, setVerifyPasswordInput] = useState('');
+  const [verifyPasswordError, setVerifyPasswordError] = useState('');
+  const [verifyPasswordLoading, setVerifyPasswordLoading] = useState(false);
+  const [showVerifyPasswordText, setShowVerifyPasswordText] = useState(false);
+
+  const handleToggleBalance = () => {
+    if (showBalance) {
+      setShowBalance(false);
+      localStorage.setItem('aurapay_show_balance', 'false');
+    } else {
+      setVerifyPasswordInput('');
+      setVerifyPasswordError('');
+      setShowVerifyPasswordText(false);
+      setShowVerifyPasswordModal(true);
+    }
+  };
+
+  const handleVerifyPassword = async (e) => {
+    e.preventDefault();
+    if (!verifyPasswordInput) {
+      setVerifyPasswordError('Please enter your password.');
+      return;
+    }
+
+    setVerifyPasswordLoading(true);
+    setVerifyPasswordError('');
+    try {
+      const token = localStorage.getItem('aurapay_token');
+      const res = await fetch('http://localhost:5000/api/auth/verify-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ password: verifyPasswordInput })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowBalance(true);
+        localStorage.setItem('aurapay_show_balance', 'true');
+        setShowVerifyPasswordModal(false);
+      } else {
+        setVerifyPasswordError(data.message || 'Incorrect password.');
+      }
+    } catch (err) {
+      console.error('Password verification error:', err);
+      setVerifyPasswordError('Connection error. Please try again.');
+    } finally {
+      setVerifyPasswordLoading(false);
+    }
   };
 
   const handleTestSoundbox = () => {
@@ -620,9 +675,19 @@ const Dashboard = () => {
           <div className="wallet-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem' }}>
               <div>
-                <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Available Balance</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Available Balance</span>
+                  <button
+                    type="button"
+                    onClick={handleToggleBalance}
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', cursor: 'pointer', padding: '0.2rem 0.3rem', display: 'flex', color: 'rgba(255,255,255,0.7)', transition: 'all 0.2s', alignItems: 'center' }}
+                    title={showBalance ? "Hide Balance" : "Show Balance"}
+                  >
+                    {showBalance ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
                 <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginTop: '0.25rem', color: '#fff' }} className="glow-text">
-                  ₹{Number(user?.walletBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  {showBalance ? `₹${Number(user?.walletBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹ ••••••.••'}
                 </h1>
               </div>
               <div style={{ background: 'rgba(255,255,255,0.08)', padding: '0.5rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -1656,6 +1721,58 @@ const Dashboard = () => {
           reward={selectedReward} 
           onClose={() => { setSelectedReward(null); }} 
         />
+      )}
+
+      {showVerifyPasswordModal && (
+        <div className="modal-overlay" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, padding: '1rem', backdropFilter: 'blur(8px)' }}>
+          <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '380px', padding: '2rem', position: 'relative', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+              <Lock size={18} color="var(--accent-primary)" />
+              Verify Password
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '1.5rem' }}>
+              Enter your login password to reveal account balance.
+            </p>
+
+            {verifyPasswordError && (
+              <div style={{ background: 'var(--danger-bg)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '0.75rem', borderRadius: '8px', color: 'var(--danger)', fontSize: '0.85rem', marginBottom: '1rem', textAlign: 'center' }}>
+                {verifyPasswordError}
+              </div>
+            )}
+
+            <form onSubmit={handleVerifyPassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Login Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showVerifyPasswordText ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={verifyPasswordInput}
+                    onChange={(e) => setVerifyPasswordInput(e.target.value)}
+                    className="glass-input"
+                    style={{ paddingRight: '40px' }}
+                    disabled={verifyPasswordLoading}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowVerifyPasswordText(!showVerifyPasswordText)}
+                    style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', padding: 0 }}
+                  >
+                    {showVerifyPasswordText ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                <button type="button" onClick={() => setShowVerifyPasswordModal(false)} className="btn btn-secondary" style={{ flex: 1 }} disabled={verifyPasswordLoading}>Cancel</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={verifyPasswordLoading}>
+                  {verifyPasswordLoading ? 'Verifying...' : 'Verify'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       <style dangerouslySetInnerHTML={{__html: `
