@@ -561,7 +561,6 @@ export const fundUpiLite = async (req, res) => {
         remarks: 'Transferred to UPI Lite Balance'
       });
 
-      const updatedUser = await User.findById(userId);
       return res.json({ 
         success: true, 
         message: `Successfully loaded ₹${numAmount} to UPI Lite`,
@@ -604,7 +603,6 @@ export const fundUpiLite = async (req, res) => {
         remarks: 'Withdrawn from UPI Lite Balance'
       });
 
-      const updatedUser = await User.findById(userId);
       return res.json({ 
         success: true, 
         message: `Successfully returned ₹${numAmount} to Main Wallet`,
