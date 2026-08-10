@@ -104,10 +104,23 @@ const Dashboard = () => {
   const [verifyPasswordLoading, setVerifyPasswordLoading] = useState(false);
   const [showVerifyPasswordText, setShowVerifyPasswordText] = useState(false);
 
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setShowBalance(localStorage.getItem('aurapay_show_balance') === 'true');
+    };
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('balanceToggle', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('balanceToggle', handleStorageChange);
+    };
+  }, []);
+
   const handleToggleBalance = () => {
     if (showBalance) {
       setShowBalance(false);
       localStorage.setItem('aurapay_show_balance', 'false');
+      window.dispatchEvent(new Event('balanceToggle'));
     } else {
       setVerifyPasswordInput('');
       setVerifyPasswordError('');
@@ -139,6 +152,7 @@ const Dashboard = () => {
       if (data.success) {
         setShowBalance(true);
         localStorage.setItem('aurapay_show_balance', 'true');
+        window.dispatchEvent(new Event('balanceToggle'));
         setShowVerifyPasswordModal(false);
       } else {
         setVerifyPasswordError(data.message || 'Incorrect password.');

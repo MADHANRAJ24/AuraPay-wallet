@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Wallet, LogOut, Menu, X, Shield, History, Send, CreditCard, LayoutDashboard, User } from 'lucide-react';
+import { Wallet, LogOut, Menu, X, Shield, History, Send, CreditCard, LayoutDashboard, User, Eye, EyeOff } from 'lucide-react';
 import UserAvatar from './UserAvatar';
 
 
@@ -10,6 +10,19 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  const [showNavbarBalance, setShowNavbarBalance] = useState(localStorage.getItem('aurapay_show_balance') === 'true');
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setShowNavbarBalance(localStorage.getItem('aurapay_show_balance') === 'true');
+    };
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('balanceToggle', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('balanceToggle', handleStorageChange);
+    };
+  }, []);
 
   if (!user) return null;
 
@@ -104,8 +117,25 @@ const Navbar = () => {
             <UserAvatar name={user.name} size={32} />
             <div style={{ textAlign: 'left' }}>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 400 }}>{user.name}</div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--success)', fontWeight: 700 }}>
-                ₹{Number(user.walletBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--success)', fontWeight: 700 }}>
+                  {showNavbarBalance ? `₹${Number(user.walletBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹ ••••••.••'}
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const nextVal = !showNavbarBalance;
+                    setShowNavbarBalance(nextVal);
+                    localStorage.setItem('aurapay_show_balance', nextVal.toString());
+                    window.dispatchEvent(new Event('balanceToggle'));
+                  }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'rgba(255,255,255,0.4)', transition: 'all 0.2s', marginLeft: '2px', alignItems: 'center' }}
+                  title={showNavbarBalance ? "Hide Balance" : "Show Balance"}
+                >
+                  {showNavbarBalance ? <EyeOff size={12} /> : <Eye size={12} />}
+                </button>
               </div>
             </div>
           </Link>
@@ -197,8 +227,23 @@ const Navbar = () => {
             </div>
             <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Wallet</div>
-              <div style={{ fontSize: '1rem', color: 'var(--success)', fontWeight: 700 }}>
-                ₹{Number(user.walletBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', justifyContent: 'flex-end' }}>
+                <span style={{ fontSize: '1rem', color: 'var(--success)', fontWeight: 700 }}>
+                  {showNavbarBalance ? `₹${Number(user.walletBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹ ••••••.••'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextVal = !showNavbarBalance;
+                    setShowNavbarBalance(nextVal);
+                    localStorage.setItem('aurapay_show_balance', nextVal.toString());
+                    window.dispatchEvent(new Event('balanceToggle'));
+                  }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'rgba(255,255,255,0.4)', transition: 'all 0.2s', marginLeft: '2px', alignItems: 'center' }}
+                  title={showNavbarBalance ? "Hide Balance" : "Show Balance"}
+                >
+                  {showNavbarBalance ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
               </div>
             </div>
           </div>
